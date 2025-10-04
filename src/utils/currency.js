@@ -1,134 +1,99 @@
-// Currency conversion utility
-// In a real application, this would use a live exchange rate API
+// Currency conversion utility using real-time exchange rates
+import axios from 'axios';
 
-const EXCHANGE_RATES = {
-  USD: 1.0,
-  EUR: 0.85,
-  GBP: 0.73,
-  INR: 83.0,
-  JPY: 110.0,
-  CAD: 1.25,
-  AUD: 1.35,
-  CHF: 0.92,
-  CNY: 6.45,
-  MXN: 20.0,
-  BRL: 5.2,
-  RUB: 75.0,
-  KRW: 1200.0,
-  SGD: 1.35,
-  HKD: 7.8,
-  NZD: 1.45,
-  NOK: 8.5,
-  SEK: 8.8,
-  DKK: 6.3,
-  PLN: 4.0,
-  CZK: 22.0,
-  HUF: 300.0,
-  RON: 4.2,
-  BGN: 1.66,
-  HRK: 6.4,
-  RSD: 100.0,
-  UAH: 27.0,
-  TRY: 8.5,
-  ILS: 3.2,
-  AED: 3.67,
-  SAR: 3.75,
-  QAR: 3.64,
-  KWD: 0.30,
-  BHD: 0.38,
-  OMR: 0.38,
-  JOD: 0.71,
-  LBP: 1500.0,
-  EGP: 15.7,
-  ZAR: 15.0,
-  NGN: 410.0,
-  KES: 110.0,
-  GHS: 6.0,
-  UGX: 3500.0,
-  TZS: 2300.0,
-  ETB: 45.0,
-  MAD: 9.0,
-  TND: 2.8,
-  DZD: 140.0,
-  LYD: 4.5,
-  SDG: 55.0,
-  AOA: 650.0,
-  MZN: 64.0,
-  BWP: 13.5,
-  SZL: 15.0,
-  LSL: 15.0,
-  NAD: 15.0,
-  ZMW: 18.0,
-  BIF: 2000.0,
-  RWF: 1000.0,
-  CDF: 2000.0,
-  XAF: 550.0,
-  XOF: 550.0,
-  KMF: 450.0,
-  DJF: 180.0,
-  ERN: 15.0,
-  SLL: 10000.0,
-  GMD: 50.0,
-  GNF: 9000.0,
-  LRD: 200.0,
-  MRO: 36.0,
-  MUR: 40.0,
-  SCR: 13.5,
-  SOS: 580.0,
-  STN: 22.0,
-  SZL: 15.0,
-  TZS: 2300.0,
-  UGX: 3500.0,
-  ZMW: 18.0,
-  ZWL: 100.0
+// Cache for exchange rates to avoid excessive API calls
+const rateCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fetch exchange rates from the API
+ * @param {string} baseCurrency - Base currency code
+ * @returns {Promise<Object>} Exchange rates object
+ */
+const fetchExchangeRates = async (baseCurrency = 'USD') => {
+  try {
+    const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch exchange rates:', error);
+    throw new Error('Unable to fetch current exchange rates');
+  }
 };
 
 /**
- * Convert amount from one currency to another
+ * Get cached exchange rates or fetch new ones
+ * @param {string} baseCurrency - Base currency code
+ * @returns {Promise<Object>} Exchange rates object
+ */
+const getExchangeRates = async (baseCurrency = 'USD') => {
+  const cacheKey = baseCurrency;
+  const cached = rateCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.rates;
+  }
+  
+  const rates = await fetchExchangeRates(baseCurrency);
+  rateCache.set(cacheKey, {
+    rates,
+    timestamp: Date.now()
+  });
+  
+  return rates;
+};
+
+/**
+ * Convert amount from one currency to another using real-time rates
  * @param {number} amount - Amount to convert
  * @param {string} fromCurrency - Source currency code
  * @param {string} toCurrency - Target currency code
- * @returns {number} Converted amount
+ * @returns {Promise<number>} Converted amount
  */
-export const convertCurrency = (amount, fromCurrency, toCurrency) => {
+export const convertCurrency = async (amount, fromCurrency, toCurrency) => {
   if (fromCurrency === toCurrency) {
     return amount;
   }
 
-  const fromRate = EXCHANGE_RATES[fromCurrency];
-  const toRate = EXCHANGE_RATES[toCurrency];
+  try {
+    const rates = await getExchangeRates(fromCurrency);
+    
+    if (!rates.rates[toCurrency]) {
+      console.warn(`Exchange rate not found for ${toCurrency}`);
+      return amount;
+    }
 
-  if (!fromRate || !toRate) {
-    console.warn(`Exchange rate not found for ${fromCurrency} or ${toCurrency}`);
-    return amount;
+    const convertedAmount = amount * rates.rates[toCurrency];
+    return Math.round(convertedAmount * 100) / 100; // Round to 2 decimal places
+  } catch (error) {
+    console.error('Currency conversion failed:', error);
+    return amount; // Return original amount if conversion fails
   }
-
-  // Convert to USD first, then to target currency
-  const usdAmount = amount / fromRate;
-  const convertedAmount = usdAmount * toRate;
-
-  return Math.round(convertedAmount * 100) / 100; // Round to 2 decimal places
 };
 
 /**
  * Get exchange rate between two currencies
  * @param {string} fromCurrency - Source currency code
  * @param {string} toCurrency - Target currency code
- * @returns {number} Exchange rate
+ * @returns {Promise<number>} Exchange rate
  */
-export const getExchangeRate = (fromCurrency, toCurrency) => {
+export const getExchangeRate = async (fromCurrency, toCurrency) => {
   if (fromCurrency === toCurrency) {
     return 1;
   }
 
-  const fromRate = EXCHANGE_RATES[fromCurrency];
-  const toRate = EXCHANGE_RATES[toCurrency];
+  try {
+    const rates = await getExchangeRates(fromCurrency);
+    
+    if (!rates.rates[toCurrency]) {
+      console.warn(`Exchange rate not found for ${toCurrency}`);
+      return 1;
+    }
 
-  if (!fromRate || !toRate) {
+    return rates.rates[toCurrency];
+  } catch (error) {
+    console.error('Failed to get exchange rate:', error);
     return 1;
   }
-
-  return toRate / fromRate;
 };
 
 /**
@@ -222,14 +187,29 @@ export const formatCurrency = (amount, currency) => {
 
 /**
  * Get list of supported currencies
- * @returns {Array} Array of currency objects
+ * @returns {Promise<Array>} Array of currency objects
  */
-export const getSupportedCurrencies = () => {
-  return Object.keys(EXCHANGE_RATES).map(code => ({
-    code,
-    name: getCurrencyName(code),
-    symbol: getCurrencySymbol(code)
-  }));
+export const getSupportedCurrencies = async () => {
+  try {
+    const rates = await getExchangeRates('USD');
+    return Object.keys(rates.rates).map(code => ({
+      code,
+      name: getCurrencyName(code),
+      symbol: getCurrencySymbol(code)
+    }));
+  } catch (error) {
+    console.error('Failed to get supported currencies:', error);
+    // Return a basic list if API fails
+    return [
+      { code: 'USD', name: 'US Dollar', symbol: '$' },
+      { code: 'EUR', name: 'Euro', symbol: '€' },
+      { code: 'GBP', name: 'British Pound Sterling', symbol: '£' },
+      { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+      { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+      { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+      { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' }
+    ];
+  }
 };
 
 /**
@@ -407,18 +387,115 @@ const getCurrencySymbol = (code) => {
 };
 
 /**
- * Simulate real-time exchange rate updates
- * In a real application, this would fetch from an API
+ * Get live exchange rate with real-time data
  * @param {string} fromCurrency - Source currency
  * @param {string} toCurrency - Target currency
  * @returns {Promise<number>} Exchange rate
  */
 export const getLiveExchangeRate = async (fromCurrency, toCurrency) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Add some random variation to simulate live rates
-  const baseRate = getExchangeRate(fromCurrency, toCurrency);
-  const variation = (Math.random() - 0.5) * 0.02; // ±1% variation
-  return baseRate * (1 + variation);
+  return await getExchangeRate(fromCurrency, toCurrency);
+};
+
+/**
+ * Get countries and their currencies
+ * @returns {Promise<Array>} Array of country objects with currency info
+ */
+export const getCountriesWithCurrencies = async () => {
+  const countries = [
+    { code: 'US', name: 'United States', currency: 'USD' },
+    { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
+    { code: 'DE', name: 'Germany', currency: 'EUR' },
+    { code: 'FR', name: 'France', currency: 'EUR' },
+    { code: 'IT', name: 'Italy', currency: 'EUR' },
+    { code: 'ES', name: 'Spain', currency: 'EUR' },
+    { code: 'NL', name: 'Netherlands', currency: 'EUR' },
+    { code: 'BE', name: 'Belgium', currency: 'EUR' },
+    { code: 'AT', name: 'Austria', currency: 'EUR' },
+    { code: 'IE', name: 'Ireland', currency: 'EUR' },
+    { code: 'PT', name: 'Portugal', currency: 'EUR' },
+    { code: 'FI', name: 'Finland', currency: 'EUR' },
+    { code: 'GR', name: 'Greece', currency: 'EUR' },
+    { code: 'LU', name: 'Luxembourg', currency: 'EUR' },
+    { code: 'MT', name: 'Malta', currency: 'EUR' },
+    { code: 'CY', name: 'Cyprus', currency: 'EUR' },
+    { code: 'SI', name: 'Slovenia', currency: 'EUR' },
+    { code: 'SK', name: 'Slovakia', currency: 'EUR' },
+    { code: 'EE', name: 'Estonia', currency: 'EUR' },
+    { code: 'LV', name: 'Latvia', currency: 'EUR' },
+    { code: 'LT', name: 'Lithuania', currency: 'EUR' },
+    { code: 'IN', name: 'India', currency: 'INR' },
+    { code: 'JP', name: 'Japan', currency: 'JPY' },
+    { code: 'CA', name: 'Canada', currency: 'CAD' },
+    { code: 'AU', name: 'Australia', currency: 'AUD' },
+    { code: 'CH', name: 'Switzerland', currency: 'CHF' },
+    { code: 'CN', name: 'China', currency: 'CNY' },
+    { code: 'MX', name: 'Mexico', currency: 'MXN' },
+    { code: 'BR', name: 'Brazil', currency: 'BRL' },
+    { code: 'RU', name: 'Russia', currency: 'RUB' },
+    { code: 'KR', name: 'South Korea', currency: 'KRW' },
+    { code: 'SG', name: 'Singapore', currency: 'SGD' },
+    { code: 'HK', name: 'Hong Kong', currency: 'HKD' },
+    { code: 'NZ', name: 'New Zealand', currency: 'NZD' },
+    { code: 'NO', name: 'Norway', currency: 'NOK' },
+    { code: 'SE', name: 'Sweden', currency: 'SEK' },
+    { code: 'DK', name: 'Denmark', currency: 'DKK' },
+    { code: 'PL', name: 'Poland', currency: 'PLN' },
+    { code: 'CZ', name: 'Czech Republic', currency: 'CZK' },
+    { code: 'HU', name: 'Hungary', currency: 'HUF' },
+    { code: 'RO', name: 'Romania', currency: 'RON' },
+    { code: 'BG', name: 'Bulgaria', currency: 'BGN' },
+    { code: 'HR', name: 'Croatia', currency: 'HRK' },
+    { code: 'RS', name: 'Serbia', currency: 'RSD' },
+    { code: 'UA', name: 'Ukraine', currency: 'UAH' },
+    { code: 'TR', name: 'Turkey', currency: 'TRY' },
+    { code: 'IL', name: 'Israel', currency: 'ILS' },
+    { code: 'AE', name: 'United Arab Emirates', currency: 'AED' },
+    { code: 'SA', name: 'Saudi Arabia', currency: 'SAR' },
+    { code: 'QA', name: 'Qatar', currency: 'QAR' },
+    { code: 'KW', name: 'Kuwait', currency: 'KWD' },
+    { code: 'BH', name: 'Bahrain', currency: 'BHD' },
+    { code: 'OM', name: 'Oman', currency: 'OMR' },
+    { code: 'JO', name: 'Jordan', currency: 'JOD' },
+    { code: 'LB', name: 'Lebanon', currency: 'LBP' },
+    { code: 'EG', name: 'Egypt', currency: 'EGP' },
+    { code: 'ZA', name: 'South Africa', currency: 'ZAR' },
+    { code: 'NG', name: 'Nigeria', currency: 'NGN' },
+    { code: 'KE', name: 'Kenya', currency: 'KES' },
+    { code: 'GH', name: 'Ghana', currency: 'GHS' },
+    { code: 'UG', name: 'Uganda', currency: 'UGX' },
+    { code: 'TZ', name: 'Tanzania', currency: 'TZS' },
+    { code: 'ET', name: 'Ethiopia', currency: 'ETB' },
+    { code: 'MA', name: 'Morocco', currency: 'MAD' },
+    { code: 'TN', name: 'Tunisia', currency: 'TND' },
+    { code: 'DZ', name: 'Algeria', currency: 'DZD' },
+    { code: 'LY', name: 'Libya', currency: 'LYD' },
+    { code: 'SD', name: 'Sudan', currency: 'SDG' },
+    { code: 'AO', name: 'Angola', currency: 'AOA' },
+    { code: 'MZ', name: 'Mozambique', currency: 'MZN' },
+    { code: 'BW', name: 'Botswana', currency: 'BWP' },
+    { code: 'SZ', name: 'Eswatini', currency: 'SZL' },
+    { code: 'LS', name: 'Lesotho', currency: 'LSL' },
+    { code: 'NA', name: 'Namibia', currency: 'NAD' },
+    { code: 'ZM', name: 'Zambia', currency: 'ZMW' },
+    { code: 'BI', name: 'Burundi', currency: 'BIF' },
+    { code: 'RW', name: 'Rwanda', currency: 'RWF' },
+    { code: 'CD', name: 'Democratic Republic of the Congo', currency: 'CDF' },
+    { code: 'CM', name: 'Cameroon', currency: 'XAF' },
+    { code: 'SN', name: 'Senegal', currency: 'XOF' },
+    { code: 'KM', name: 'Comoros', currency: 'KMF' },
+    { code: 'DJ', name: 'Djibouti', currency: 'DJF' },
+    { code: 'ER', name: 'Eritrea', currency: 'ERN' },
+    { code: 'SL', name: 'Sierra Leone', currency: 'SLL' },
+    { code: 'GM', name: 'Gambia', currency: 'GMD' },
+    { code: 'GN', name: 'Guinea', currency: 'GNF' },
+    { code: 'LR', name: 'Liberia', currency: 'LRD' },
+    { code: 'MR', name: 'Mauritania', currency: 'MRO' },
+    { code: 'MU', name: 'Mauritius', currency: 'MUR' },
+    { code: 'SC', name: 'Seychelles', currency: 'SCR' },
+    { code: 'SO', name: 'Somalia', currency: 'SOS' },
+    { code: 'ST', name: 'São Tomé and Príncipe', currency: 'STN' },
+    { code: 'ZW', name: 'Zimbabwe', currency: 'ZWL' }
+  ];
+
+  return countries;
 };

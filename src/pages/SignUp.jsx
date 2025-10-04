@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { getCountriesWithCurrencies } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 const SignUp = () => {
@@ -17,9 +18,22 @@ const SignUp = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [countries, setCountries] = useState([]);
 
   const { signup } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const countriesData = await getCountriesWithCurrencies();
+        setCountries(countriesData);
+      } catch (error) {
+        console.error('Failed to load countries:', error);
+      }
+    };
+    loadCountries();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -163,20 +177,21 @@ const SignUp = () => {
                   Country
                 </label>
                 <div className="mt-1">
-                  <select
-                    id="country"
-                    name="country"
-                    required
-                    value={formData.country}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    <option value="">Select your country</option>
-                    <option value="USA">USA</option>
-                    <option value="India">India</option>
-                    <option value="UK">UK</option>
-                    <option value="Canada">Canada</option>
-                  </select>
+                        <select
+                          id="country"
+                          name="country"
+                          required
+                          value={formData.country}
+                          onChange={handleChange}
+                          className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        >
+                          <option value="">Select your country</option>
+                          {countries.map(country => (
+                            <option key={country.code} value={country.name}>
+                              {country.name} ({country.currency})
+                            </option>
+                          ))}
+                        </select>
                 </div>
               </div>
             )}

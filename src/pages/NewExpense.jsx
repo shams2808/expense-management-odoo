@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, Camera, X, Save, Send, DollarSign, Calendar, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import Tesseract from 'tesseract.js';
+import { getSupportedCurrencies } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 const NewExpense = () => {
@@ -23,6 +24,7 @@ const NewExpense = () => {
   const [isProcessingOCR, setIsProcessingOCR] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [currencies, setCurrencies] = useState([]);
 
   const categories = [
     'Meals',
@@ -34,13 +36,25 @@ const NewExpense = () => {
     'Other'
   ];
 
-  const currencies = [
-    { code: 'USD', name: 'US Dollar', symbol: '$' },
-    { code: 'EUR', name: 'Euro', symbol: '€' },
-    { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-    { code: 'GBP', name: 'British Pound', symbol: '£' },
-    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' }
-  ];
+  useEffect(() => {
+    const loadCurrencies = async () => {
+      try {
+        const currenciesData = await getSupportedCurrencies();
+        setCurrencies(currenciesData);
+      } catch (error) {
+        console.error('Failed to load currencies:', error);
+        // Fallback to basic currencies
+        setCurrencies([
+          { code: 'USD', name: 'US Dollar', symbol: '$' },
+          { code: 'EUR', name: 'Euro', symbol: '€' },
+          { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+          { code: 'GBP', name: 'British Pound', symbol: '£' },
+          { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' }
+        ]);
+      }
+    };
+    loadCurrencies();
+  }, []);
 
   const paymentMethods = [
     'Company Card',
