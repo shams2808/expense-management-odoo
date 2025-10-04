@@ -27,14 +27,21 @@ const EmployeeDashboard = () => {
 
   const loadExpenses = async () => {
     try {
+      console.log('Loading expenses for user ID:', user.id);
       setIsLoading(true);
+      
       const userExpenses = getExpensesForUser(user.id);
+      console.log('Found expenses:', userExpenses);
+      
       setExpenses(userExpenses);
+      console.log('Expenses state updated');
+      
     } catch (error) {
       console.error('Failed to load expenses:', error);
       toast.error('Failed to load expenses');
     } finally {
       setIsLoading(false);
+      console.log('Loading completed');
     }
   };
 
@@ -73,9 +80,21 @@ const EmployeeDashboard = () => {
 
   const handleSubmit = async (expenseId) => {
     try {
+      console.log('Submitting expense with ID:', expenseId);
+      console.log('Current expenses before submission:', expenses);
+      
+      // Submit the expense
       submitExpense(expenseId);
+      
+      console.log('Expense submitted, reloading expenses...');
       toast.success('Expense submitted for approval');
-      loadExpenses();
+      
+      // Wait a bit for state to update, then reload
+      setTimeout(async () => {
+        await loadExpenses();
+        console.log('Expenses reloaded after submission');
+      }, 100);
+      
     } catch (error) {
       console.error('Failed to submit expense:', error);
       toast.error('Failed to submit expense');

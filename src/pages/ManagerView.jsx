@@ -13,7 +13,9 @@ const ManagerView = () => {
     rejectExpense, 
     convertExpenseAmount, 
     companyCurrency,
-    getAllExpenses 
+    getAllExpenses,
+    getUsers,
+    updateExpense
   } = useExpenses();
   
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -27,14 +29,31 @@ const ManagerView = () => {
   const loadPendingApprovals = async () => {
     try {
       setIsLoading(true);
-      // Get all submitted expenses that need approval
+      console.log('Loading pending approvals for manager:', user.name);
+      
+      // Get all users to find team members
+      const allUsers = getUsers();
+      console.log('All users:', allUsers);
+      
       const allExpenses = getAllExpenses();
+      console.log('All expenses:', allExpenses);
+      
+      // Find employees who report to this manager
+      const teamMembers = allUsers.filter(emp => 
+        emp.role === 'employee' && emp.manager === user.name
+      );
+      console.log('Team members for', user.name, ':', teamMembers);
+      
+      // Get submitted expenses from team members
+      const teamMemberIds = teamMembers.map(member => member.id);
+      console.log('Team member IDs:', teamMemberIds);
+      
       const pending = allExpenses.filter(expense => 
         expense.status === 'submitted' && 
-        expense.approvers.some(approver => 
-          approver.name === user.name && approver.status === 'pending'
-        )
+        teamMemberIds.includes(expense.employeeId)
       );
+      console.log('Pending approvals:', pending);
+      
       setPendingApprovals(pending);
     } catch (error) {
       console.error('Failed to load pending approvals:', error);
@@ -48,21 +67,29 @@ const ManagerView = () => {
     try {
       setProcessingIds(prev => new Set([...prev, expenseId]));
       
-      // Convert amount to company currency for display
+      console.log(`Approving expense: ${expenseId}`);
+      
+      // Get the expense to update
       const expense = pendingApprovals.find(e => e.id === expenseId);
-      if (expense) {
-        const convertedAmount = await convertCurrency(
-          expense.amount, 
-          expense.currency, 
-          companyCurrency
-        );
-        
-        console.log(`Approving expense: ${expense.description}`);
-        console.log(`Original amount: ${formatCurrency(expense.amount, expense.currency)}`);
-        console.log(`Converted amount: ${formatCurrency(convertedAmount, companyCurrency)}`);
+      if (!expense) {
+        console.error('Expense not found in pending approvals');
+        return;
       }
       
-      approveExpense(expenseId, user.name);
+      // Add approval history entry
+      const approvalHistory = [
+        ...(expense.approvalHistory || []),
+        { approver: user.name, action: 'approved', timestamp: new Date().toISOString() }
+      ];
+      
+      // Update the expense directly using updateExpense
+      updateExpense(expenseId, {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        approvalHistory
+      });
+      
+      console.log('Expense approved successfully');
       toast.success('Expense approved successfully');
       
       // Remove from pending list
@@ -83,7 +110,28 @@ const ManagerView = () => {
     try {
       setProcessingIds(prev => new Set([...prev, expenseId]));
       
-      rejectExpense(expenseId, user.name);
+      console.log(`Rejecting expense: ${expenseId}`);
+      
+      // Get the expense to update
+      const expense = pendingApprovals.find(e => e.id === expenseId);
+      if (!expense) {
+        console.error('Expense not found in pending approvals');
+        return;
+      }
+      
+      // Add approval history entry
+      const approvalHistory = [
+        ...(expense.approvalHistory || []),
+        { approver: user.name, action: 'rejected', timestamp: new Date().toISOString() }
+      ];
+      
+      // Update the expense directly using updateExpense
+      updateExpense(expenseId, {
+        status: 'rejected',
+        approvalHistory
+      });
+      
+      console.log('Expense rejected successfully');
       toast.success('Expense rejected');
       
       // Remove from pending list
@@ -199,11 +247,7 @@ const ManagerView = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Ready to Review</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {pendingApprovals.filter(expense => 
-                    expense.approvers.some(approver => 
-                      approver.name === user.name && approver.status === 'pending'
-                    )
-                  ).length}
+                  {pendingApprovals.length}
                 </p>
               </div>
             </div>
@@ -228,19 +272,19 @@ const ManagerView = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Approval Subject
+                      Expense Description
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Request Owner
+                      Employee
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Request Status
+                      Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Amount
+                      Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -264,9 +308,6 @@ const ManagerView = () => {
                                 {expense.remarks}
                               </div>
                             )}
-                            <div className="text-xs text-gray-400 mt-1">
-                              Submitted: {new Date(expense.submittedAt).toLocaleDateString()}
-                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -280,8 +321,8 @@ const ManagerView = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {expense.category}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(expense.status)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(expense.expenseDate).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">

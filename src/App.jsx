@@ -9,8 +9,8 @@ import { Toaster } from 'react-hot-toast';
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const SignIn = lazy(() => import('./pages/SignIn'));
 const SignUp = lazy(() => import('./pages/SignUp'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AdminApprovalRules = lazy(() => import('./pages/AdminApprovalRules'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
 const ManagerView = lazy(() => import('./pages/ManagerView'));
 const NewExpense = lazy(() => import('./pages/NewExpense'));
@@ -24,6 +24,21 @@ const LoadingSpinner = () => (
     </div>
   </div>
 );
+
+// Dashboard redirect component
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+  
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />;
+  } else if (user?.role === 'manager') {
+    return <Navigate to="/manager/approvals" replace />;
+  } else if (user?.role === 'employee') {
+    return <Navigate to="/employee/dashboard" replace />;
+  }
+  
+  return <Navigate to="/" replace />;
+};
 
 // Protected Route component
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -75,7 +90,8 @@ function App() {
                   <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
                   
                   {/* Protected Routes */}
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+                  <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/approval-rules" element={<ProtectedRoute requiredRole="admin"><AdminApprovalRules /></ProtectedRoute>} />
                   <Route path="/employee/dashboard" element={<ProtectedRoute requiredRole="employee"><EmployeeDashboard /></ProtectedRoute>} />
                   <Route path="/manager/approvals" element={<ProtectedRoute requiredRole="manager"><ManagerView /></ProtectedRoute>} />

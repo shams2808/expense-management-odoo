@@ -202,6 +202,7 @@ const NewExpense = () => {
         employeeName: user.name,
         employeeEmail: user.email,
         currency: formData.currency || 'USD',
+        expenseDate: formData.date, // Map date to expenseDate
         status: 'draft'
       };
 
@@ -233,6 +234,7 @@ const NewExpense = () => {
         employeeName: user.name,
         employeeEmail: user.email,
         currency: formData.currency || 'USD',
+        expenseDate: formData.date, // Map date to expenseDate
         status: 'draft'
       };
 
@@ -263,6 +265,7 @@ const NewExpense = () => {
         employeeName: user.name,
         employeeEmail: user.email,
         currency: formData.currency || 'USD',
+        expenseDate: formData.date, // Map date to expenseDate
         status: 'draft'
       };
 

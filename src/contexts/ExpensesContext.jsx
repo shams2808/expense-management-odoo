@@ -22,9 +22,136 @@ export const ExpensesProvider = ({ children }) => {
     const savedRules = localStorage.getItem('approvalRules');
     const savedCurrency = localStorage.getItem('companyCurrency');
 
-    if (savedExpenses) {
-      setExpenses(JSON.parse(savedExpenses));
-    }
+    // Always initialize with mock expenses for demonstration
+    // Comment out the if condition to force mock data
+    // if (savedExpenses) {
+    //   setExpenses(JSON.parse(savedExpenses));
+    // } else {
+      // Initialize with mock expenses for demonstration
+      const mockExpenses = [
+        {
+          id: 1,
+          description: 'Client Dinner - Tech Conference',
+          category: 'Meals',
+          amount: 125.50,
+          currency: 'USD',
+          expenseDate: '2024-10-01',
+          paidBy: 'Company Card',
+          remarks: 'Dinner with potential client at tech conference',
+          employeeId: 1,
+          employeeName: 'John Employee',
+          employeeEmail: 'john@company.com',
+          status: 'submitted',
+          submittedAt: '2024-10-02T10:30:00.000Z',
+          createdAt: '2024-10-01T15:30:00.000Z'
+        },
+        {
+          id: 2,
+          description: 'Office Supplies - Stationery',
+          category: 'Office Supplies',
+          amount: 89.99,
+          currency: 'USD',
+          expenseDate: '2024-10-02',
+          paidBy: 'Personal Card',
+          remarks: 'Pens, notebooks, and office supplies for team',
+          employeeId: 4,
+          employeeName: 'Jane Smith',
+          employeeEmail: 'jane@company.com',
+          status: 'submitted',
+          submittedAt: '2024-10-03T09:15:00.000Z',
+          createdAt: '2024-10-02T14:20:00.000Z'
+        },
+        {
+          id: 3,
+          description: 'Uber Ride - Client Meeting',
+          category: 'Travel',
+          amount: 24.75,
+          currency: 'USD',
+          expenseDate: '2024-10-03',
+          paidBy: 'Company Card',
+          remarks: 'Transportation to downtown client meeting',
+          employeeId: 1,
+          employeeName: 'John Employee',
+          employeeEmail: 'john@company.com',
+          status: 'submitted',
+          submittedAt: '2024-10-03T16:45:00.000Z',
+          createdAt: '2024-10-03T11:30:00.000Z'
+        },
+        {
+          id: 4,
+          description: 'Software License - Adobe Creative Suite',
+          category: 'Software',
+          amount: 299.00,
+          currency: 'USD',
+          expenseDate: '2024-10-01',
+          paidBy: 'Company Card',
+          remarks: 'Annual subscription for design team',
+          employeeId: 4,
+          employeeName: 'Jane Smith',
+          employeeEmail: 'jane@company.com',
+          status: 'submitted',
+          submittedAt: '2024-10-02T11:20:00.000Z',
+          createdAt: '2024-10-01T10:00:00.000Z'
+        },
+        {
+          id: 5,
+          description: 'Team Lunch - Project Celebration',
+          category: 'Meals',
+          amount: 156.80,
+          currency: 'USD',
+          expenseDate: '2024-09-30',
+          paidBy: 'Company Card',
+          remarks: 'Celebrating successful project completion',
+          employeeId: 1,
+          employeeName: 'John Employee',
+          employeeEmail: 'john@company.com',
+          status: 'submitted',
+          submittedAt: '2024-10-01T08:30:00.000Z',
+          createdAt: '2024-09-30T13:00:00.000Z'
+        },
+        {
+          id: 6,
+          description: 'Coffee Meeting - Client Discussion',
+          category: 'Meals',
+          amount: 45.20,
+          currency: 'USD',
+          expenseDate: '2024-09-28',
+          paidBy: 'Company Card',
+          remarks: 'Coffee meeting with potential client',
+          employeeId: 4,
+          employeeName: 'Jane Smith',
+          employeeEmail: 'jane@company.com',
+          status: 'approved',
+          submittedAt: '2024-09-29T10:00:00.000Z',
+          approvedAt: '2024-09-29T14:30:00.000Z',
+          createdAt: '2024-09-28T16:00:00.000Z',
+          approvalHistory: [
+            { approver: 'Manager User', action: 'approved', timestamp: '2024-09-29T14:30:00.000Z' }
+          ]
+        },
+        {
+          id: 7,
+          description: 'Expensive Dinner - Personal',
+          category: 'Meals',
+          amount: 450.00,
+          currency: 'USD',
+          expenseDate: '2024-09-25',
+          paidBy: 'Personal Card',
+          remarks: 'Personal dinner with family',
+          employeeId: 1,
+          employeeName: 'John Employee',
+          employeeEmail: 'john@company.com',
+          status: 'rejected',
+          submittedAt: '2024-09-26T09:00:00.000Z',
+          createdAt: '2024-09-25T19:00:00.000Z',
+          approvalHistory: [
+            { approver: 'Manager User', action: 'rejected', timestamp: '2024-09-26T11:15:00.000Z' }
+          ]
+        }
+      ];
+      setExpenses(mockExpenses);
+    // }
+    
     if (savedRules) {
       setApprovalRules(JSON.parse(savedRules));
     }
@@ -63,9 +190,14 @@ export const ExpensesProvider = ({ children }) => {
   };
 
   const updateExpense = (expenseId, updates) => {
-    setExpenses(prev => prev.map(expense => 
-      expense.id === expenseId ? { ...expense, ...updates } : expense
-    ));
+    console.log('updateExpense called with ID:', expenseId, 'updates:', updates);
+    setExpenses(prev => {
+      const updated = prev.map(expense => 
+        expense.id === expenseId ? { ...expense, ...updates } : expense
+      );
+      console.log('Updated expenses:', updated);
+      return updated;
+    });
   };
 
   const deleteExpense = (expenseId) => {
@@ -73,27 +205,45 @@ export const ExpensesProvider = ({ children }) => {
   };
 
   const submitExpense = (expenseId) => {
-    const expense = expenses.find(e => e.id === expenseId);
-    if (!expense) return;
-
-    // Apply approval rules
-    const rule = approvalRules.find(r => r.userId === expense.employeeId);
-    if (rule) {
-      const approvers = rule.approvers.map(approver => ({
-        ...approver,
-        status: 'pending'
-      }));
+    try {
+      console.log('submitExpense called with ID:', expenseId);
+      console.log('Current expenses:', expenses);
       
-      updateExpense(expenseId, {
-        status: 'submitted',
-        submittedAt: new Date().toISOString(),
-        approvers
-      });
-    } else {
-      updateExpense(expenseId, {
-        status: 'submitted',
-        submittedAt: new Date().toISOString()
-      });
+      const expense = expenses.find(e => e.id === expenseId);
+      if (!expense) {
+        console.error('Expense not found:', expenseId);
+        return;
+      }
+
+      console.log('Submitting expense:', expense);
+
+      // Apply approval rules
+      const rule = approvalRules.find(r => r.userId === expense.employeeId);
+      if (rule) {
+        console.log('Found approval rule:', rule);
+        const approvers = rule.approvers.map(approver => ({
+          ...approver,
+          status: 'pending'
+        }));
+        
+        console.log('Updating expense with approvers');
+        updateExpense(expenseId, {
+          status: 'submitted',
+          submittedAt: new Date().toISOString(),
+          approvers
+        });
+      } else {
+        console.log('No approval rule found, submitting without approvers');
+        updateExpense(expenseId, {
+          status: 'submitted',
+          submittedAt: new Date().toISOString()
+        });
+      }
+      
+      console.log('Expense submitted successfully');
+    } catch (error) {
+      console.error('Error submitting expense:', error);
+      throw error;
     }
   };
 
@@ -180,7 +330,11 @@ export const ExpensesProvider = ({ children }) => {
 
   // Get expenses for a specific user
   const getExpensesForUser = (userId) => {
-    return expenses.filter(expense => expense.employeeId === userId);
+    console.log('getExpensesForUser called with userId:', userId);
+    console.log('All expenses:', expenses);
+    const userExpenses = expenses.filter(expense => expense.employeeId === userId);
+    console.log('Filtered expenses for user:', userExpenses);
+    return userExpenses;
   };
 
   // Get pending approvals for a specific approver
@@ -213,15 +367,57 @@ export const ExpensesProvider = ({ children }) => {
 
   const getApprovalRules = getAllApprovalRules;
 
-  // Get users (mock data for now)
+  // User management state
+  const [users, setUsers] = useState([]);
+
+  // Load users from localStorage on mount
+  useEffect(() => {
+    const savedUsers = localStorage.getItem('users');
+    // Always initialize with default users for demonstration
+    // if (savedUsers) {
+    //   setUsers(JSON.parse(savedUsers));
+    // } else {
+      // Initialize with default users
+      const defaultUsers = [
+        { id: 1, name: 'John Employee', email: 'john@company.com', role: 'employee', manager: 'Manager User', department: 'Sales', phone: '+1-555-0101', isActive: true, createdAt: new Date().toISOString() },
+        { id: 2, name: 'Manager User', email: 'manager@company.com', role: 'manager', department: 'Management', phone: '+1-555-0102', isActive: true, createdAt: new Date().toISOString() },
+        { id: 3, name: 'Admin User', email: 'admin@company.com', role: 'admin', department: 'IT', phone: '+1-555-0103', isActive: true, createdAt: new Date().toISOString() },
+        { id: 4, name: 'Jane Smith', email: 'jane@company.com', role: 'employee', manager: 'Manager User', department: 'Marketing', phone: '+1-555-0104', isActive: true, createdAt: new Date().toISOString() },
+        { id: 5, name: 'Bob Johnson', email: 'bob@company.com', role: 'manager', department: 'Operations', phone: '+1-555-0105', isActive: true, createdAt: new Date().toISOString() }
+      ];
+      setUsers(defaultUsers);
+    // }
+  }, []);
+
+  // Save users to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+
+  // User management functions
+  const addUser = (userData) => {
+    const newUser = {
+      ...userData,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setUsers(prev => [...prev, newUser]);
+    return newUser;
+  };
+
+  const updateUser = (userData) => {
+    setUsers(prev => prev.map(user => 
+      user.id === userData.id ? { ...user, ...userData, updatedAt: new Date().toISOString() } : user
+    ));
+  };
+
+  const deleteUser = (userId) => {
+    setUsers(prev => prev.filter(user => user.id !== userId));
+  };
+
   const getUsers = () => {
-    return [
-      { id: 1, name: 'John Employee', email: 'john@company.com', role: 'employee', manager: 'Manager User' },
-      { id: 2, name: 'Manager User', email: 'manager@company.com', role: 'manager' },
-      { id: 3, name: 'Admin User', email: 'admin@company.com', role: 'admin' },
-      { id: 4, name: 'Jane Smith', email: 'jane@company.com', role: 'employee', manager: 'Manager User' },
-      { id: 5, name: 'Bob Johnson', email: 'bob@company.com', role: 'manager' }
-    ];
+    return users;
   };
 
   // Statistics
@@ -256,6 +452,7 @@ export const ExpensesProvider = ({ children }) => {
     expenses,
     approvalRules,
     companyCurrency,
+    users,
     
     // Expense functions
     createExpense,
@@ -271,6 +468,11 @@ export const ExpensesProvider = ({ children }) => {
     updateApprovalRule,
     deleteApprovalRule,
     getApprovalRules,
+    
+    // User management functions
+    addUser,
+    updateUser,
+    deleteUser,
     getUsers,
     
     // Utility functions
