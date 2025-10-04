@@ -154,6 +154,52 @@ const SignIn = () => {
               </div>
             </div>
 
+            {/* Test Credentials */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-900 mb-3">Test Credentials (for demo)</h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-blue-800">Admin:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-700">admin@company.com / admin123</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ email: 'admin@company.com', password: 'admin123' })}
+                      className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                    >
+                      Use
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-blue-800">Manager:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-700">manager@company.com / mgr123</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ email: 'manager@company.com', password: 'mgr123' })}
+                      className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                    >
+                      Use
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-blue-800">Employee:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-700">employee@company.com / emp123</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ email: 'employee@company.com', password: 'emp123' })}
+                      className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                    >
+                      Use
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div>
               <button
                 type="submit"
