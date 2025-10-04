@@ -44,8 +44,13 @@ const SignUp = () => {
     }
 
     try {
-      await signup(formData.name, formData.email, formData.password, formData.role, formData.country);
-      toast.success('Account created successfully!');
+      const result = await signup(formData.name, formData.email, formData.password, formData.role, formData.country);
+      if (result.success) {
+        toast.success('Account created successfully!');
+        // Navigation will be handled by the ProtectedRoute component
+      } else {
+        throw new Error(result.error || 'Signup failed');
+      }
     } catch (err) {
       setError(err.message || 'An error occurred during sign up');
       toast.error(err.message || 'An error occurred during sign up');

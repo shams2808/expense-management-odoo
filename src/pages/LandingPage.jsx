@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Receipt, FileText, UserCheck, Settings, DollarSign, Clock, CheckCircle, ArrowRight, Play } from 'lucide-react';
+import { Receipt, FileText, UserCheck, Settings, DollarSign, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 
 const LandingPage = () => {
   return (
@@ -41,102 +41,32 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              All your expenses
+              Streamline your expense
               <br />
-              <span className="text-blue-600">on one platform.</span>
+              <span className="text-blue-600">management workflow</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Simple, efficient, yet affordable! Streamline your expense tracking with intelligent approval workflows and real-time insights.
+              Professional expense tracking with intelligent approval workflows and real-time insights for your organization.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/signup"
                 className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center justify-center"
               >
-                Start now - It's free
+                Get Started
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
-              <button className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold border border-blue-600 hover:bg-blue-50 transition-colors inline-flex items-center justify-center">
-                <Play className="mr-2 w-5 h-5" />
-                Watch Demo
-              </button>
             </div>
           </div>
         </div>
       </section>
       
-      {/* Apps Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">All your business on one platform.</h2>
-            <p className="text-lg text-gray-600">Simple, efficient, yet affordable! $24.90 / month for ALL apps</p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {/* Expense Management App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Expenses</h3>
-              <p className="text-xs text-gray-500">Track & manage</p>
-            </div>
-
-            {/* Approval Workflows App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Approvals</h3>
-              <p className="text-xs text-gray-500">Workflow management</p>
-            </div>
-
-            {/* Currency Conversion App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-yellow-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Currency</h3>
-              <p className="text-xs text-gray-500">Real-time conversion</p>
-            </div>
-
-            {/* OCR Processing App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">OCR</h3>
-              <p className="text-xs text-gray-500">Smart extraction</p>
-            </div>
-
-            {/* Analytics App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <Settings className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Analytics</h3>
-              <p className="text-xs text-gray-500">Insights & reports</p>
-            </div>
-
-            {/* Notifications App */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Notifications</h3>
-              <p className="text-xs text-gray-500">Real-time alerts</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Level up your quality of work</h2>
-            <p className="text-lg text-gray-600">Optimized for productivity with smart AI and fast UI</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Powerful Features</h2>
+            <p className="text-lg text-gray-600">Everything you need to manage expenses efficiently</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -217,26 +147,6 @@ const LandingPage = () => {
                 </li>
               </ul>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Unleash your growth potential</h2>
-          <p className="text-xl text-blue-100 mb-8">Join 15 million happy users who grow their business with ExpenseFlow</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/signup"
-              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition-colors inline-flex items-center justify-center"
-            >
-              Start now - It's free
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-            <button className="bg-transparent text-white px-8 py-4 rounded-lg text-lg font-semibold border border-white hover:bg-white hover:text-blue-600 transition-colors">
-              No credit card required
-            </button>
           </div>
         </div>
       </section>

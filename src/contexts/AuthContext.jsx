@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         return { success: true };
       }
-      return { success: false, error: 'Invalid credentials' };
+      throw new Error('Invalid credentials');
     }
   };
 
@@ -93,6 +93,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signup = async (name, email, password, role, country) => {
+    const userData = {
+      name,
+      email,
+      password,
+      role: role || 'employee',
+      country: country || 'US'
+    };
+    return await register(userData);
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
@@ -102,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     register,
+    signup,
     logout,
     loading,
   };

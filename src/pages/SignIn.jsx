@@ -32,8 +32,13 @@ const SignIn = () => {
     setError('');
 
     try {
-      await login(formData.email, formData.password);
-      toast.success('Successfully signed in!');
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        toast.success('Successfully signed in!');
+        // Navigation will be handled by the ProtectedRoute component
+      } else {
+        throw new Error(result.error || 'Login failed');
+      }
     } catch (err) {
       setError(err.message || 'An error occurred during sign in');
       toast.error(err.message || 'An error occurred during sign in');
