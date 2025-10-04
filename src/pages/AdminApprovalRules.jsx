@@ -1,465 +1,522 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, X, Users, Settings, UserCheck, Clock, DollarSign, AlertCircle, Edit, Eye } from 'lucide-react';
+import { Plus, Trash2, Save, Users, Settings, UserCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useExpenses } from '../contexts/ExpensesContext';
 import toast from 'react-hot-toast';
 
 const AdminApprovalRules = () => {
-  const [rules, setRules] = useState([]);
-  const [isEditing, setIsEditing] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
+  const { addApprovalRule, getUsers, getApprovalRules } = useExpenses();
+  
+  const [users, setUsers] = useState([]);
+  const [approvalRules, setApprovalRules] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  
+  const [formData, setFormData] = useState({
+    userId: '',
+    description: '',
+    managerId: '',
+    approvers: [],
+    isManagerApprover: false,
+    isSequential: false,
+    minimumApprovalPercentage: 50,
+    isActive: true
+  });
 
-  // Mock data for approval rules
+  const [newApprover, setNewApprover] = useState({
+    name: '',
+    email: '',
+    role: 'manager'
+  });
+
   useEffect(() => {
-    const mockRules = [
-      {
-        id: 1,
-        user: 'John Doe',
-        description: 'Approval rule for miscellaneous expenses under $500',
-        manager: 'Sarah Wilson',
-        approvers: [
-          { name: 'Mike Johnson', required: true },
-          { name: 'Lisa Chen', required: false }
-        ],
-        isManagerApprover: true,
-        approversSequence: true,
-        minApprovalPercentage: 100,
-        status: 'active',
-        createdAt: '2024-01-10T10:00:00Z',
-        updatedAt: '2024-01-15T14:30:00Z'
-      },
-      {
-        id: 2,
-        user: 'Jane Smith',
-        description: 'Approval rule for travel expenses',
-        manager: 'David Brown',
-        approvers: [
-          { name: 'Alex Rodriguez', required: true },
-          { name: 'Emma Davis', required: true }
-        ],
-        isManagerApprover: false,
-        approversSequence: false,
-        minApprovalPercentage: 100,
-        status: 'active',
-        createdAt: '2024-01-12T09:15:00Z',
-        updatedAt: '2024-01-12T09:15:00Z'
-      }
-    ];
-    setRules(mockRules);
+    loadData();
   }, []);
 
-  const handleAddRule = () => {
-    const newRule = {
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [usersData, rulesData] = await Promise.all([
+        getUsers(),
+        getApprovalRules()
+      ]);
+      setUsers(usersData);
+      setApprovalRules(rulesData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleAddApprover = () => {
+    if (!newApprover.name || !newApprover.email) {
+      toast.error('Please fill in approver name and email');
+      return;
+    }
+
+    const approver = {
       id: Date.now(),
-      user: '',
+      name: newApprover.name,
+      email: newApprover.email,
+      role: newApprover.role,
+      isRequired: false
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      approvers: [...prev.approvers, approver]
+    }));
+
+    setNewApprover({ name: '', email: '', role: 'manager' });
+    toast.success('Approver added');
+  };
+
+  const handleRemoveApprover = (approverId) => {
+    setFormData(prev => ({
+      ...prev,
+      approvers: prev.approvers.filter(approver => approver.id !== approverId)
+    }));
+  };
+
+  const handleToggleRequired = (approverId) => {
+    setFormData(prev => ({
+      ...prev,
+      approvers: prev.approvers.map(approver =>
+        approver.id === approverId
+          ? { ...approver, isRequired: !approver.isRequired }
+          : approver
+      )
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.userId || !formData.description) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const ruleData = {
+        ...formData,
+        id: editingRule ? editingRule.id : Date.now(),
+        createdAt: editingRule ? editingRule.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await addApprovalRule(ruleData);
+      
+      if (editingRule) {
+        toast.success('Approval rule updated successfully');
+      } else {
+        toast.success('Approval rule created successfully');
+      }
+      
+      setShowForm(false);
+      setEditingRule(null);
+      setFormData({
+        userId: '',
+        description: '',
+        managerId: '',
+        approvers: [],
+        isManagerApprover: false,
+        isSequential: false,
+        minimumApprovalPercentage: 50,
+        isActive: true
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Failed to save approval rule:', error);
+      toast.error('Failed to save approval rule');
+    }
+  };
+
+  const handleEdit = (rule) => {
+    setEditingRule(rule);
+    setFormData({
+      userId: rule.userId,
+      description: rule.description,
+      managerId: rule.managerId,
+      approvers: rule.approvers || [],
+      isManagerApprover: rule.isManagerApprover || false,
+      isSequential: rule.isSequential || false,
+      minimumApprovalPercentage: rule.minimumApprovalPercentage || 50,
+      isActive: rule.isActive !== false
+    });
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingRule(null);
+    setFormData({
+      userId: '',
       description: '',
-      manager: '',
+      managerId: '',
       approvers: [],
       isManagerApprover: false,
-      approversSequence: false,
-      minApprovalPercentage: 50,
-      status: 'draft'
-    };
-    setRules(prev => [newRule, ...prev]);
-    setIsEditing(newRule.id);
+      isSequential: false,
+      minimumApprovalPercentage: 50,
+      isActive: true
+    });
   };
 
-  const handleDeleteRule = async (id) => {
-    if (window.confirm('Are you sure you want to delete this rule?')) {
-      setRules(prev => prev.filter(rule => rule.id !== id));
-      toast.success('Rule deleted successfully');
-    }
-  };
+  const selectedUser = users.find(u => u.id === formData.userId);
+  const managers = users.filter(u => u.role === 'manager');
 
-  const handleRuleChange = (id, field, value) => {
-    setRules(prev => prev.map(rule => 
-      rule.id === id ? { ...rule, [field]: value } : rule
-    ));
-  };
-
-  const handleAddApprover = (ruleId) => {
-    setRules(prev => prev.map(rule =>
-      rule.id === ruleId
-        ? { ...rule, approvers: [...rule.approvers, { name: '', required: false }] }
-        : rule
-    ));
-  };
-
-  const handleApproverChange = (ruleId, index, field, value) => {
-    setRules(prev => prev.map(rule =>
-      rule.id === ruleId
-        ? {
-            ...rule,
-            approvers: rule.approvers.map((approver, i) =>
-              i === index ? { ...approver, [field]: value } : approver
-            ),
-          }
-        : rule
-    ));
-  };
-
-  const handleRemoveApprover = (ruleId, index) => {
-    setRules(prev => prev.map(rule =>
-      rule.id === ruleId
-        ? { ...rule, approvers: rule.approvers.filter((_, i) => i !== index) }
-        : rule
-    ));
-  };
-
-  const handleSaveRule = async (id) => {
-    setIsSaving(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setRules(prev => prev.map(rule => 
-        rule.id === id 
-          ? { 
-              ...rule, 
-              status: 'active',
-              updatedAt: new Date().toISOString()
-            } 
-          : rule
-      ));
-      
-      setIsEditing(null);
-      toast.success('Rule saved successfully');
-    } catch (error) {
-      toast.error('Failed to save rule');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleEditRule = (id) => {
-    setIsEditing(id);
-  };
-
-  const handleCancelEdit = (id) => {
-    if (rules.find(rule => rule.id === id)?.status === 'draft') {
-      setRules(prev => prev.filter(rule => rule.id !== id));
-    }
-    setIsEditing(null);
-  };
-
-  const stats = {
-    total: rules.length,
-    active: rules.filter(r => r.status === 'active').length,
-    draft: rules.filter(r => r.status === 'draft').length,
-    users: [...new Set(rules.map(r => r.user))].length
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 text-sm">Loading approval rules...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Approval Rules Management</h1>
-          <p className="mt-2 text-gray-600">Configure expense approval workflows for your organization</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Settings className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Rules</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Approval Rules</h1>
+              <p className="text-gray-600 mt-2">Configure expense approval workflows for your organization</p>
             </div>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              New Rule
+            </button>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <UserCheck className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Rules</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.active}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Edit className="h-8 w-8 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Draft Rules</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.draft}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Users className="h-8 w-8 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Users Covered</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.users}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Add Rule Button */}
-        <div className="mb-6">
-          <button
-            onClick={handleAddRule}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add New Rule
-          </button>
         </div>
 
         {/* Rules List */}
-        <div className="space-y-6">
-          {rules.map((rule) => (
-            <div key={rule.id} className="bg-white rounded-lg shadow">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {rule.user || 'New Rule'}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {rule.description || 'No description provided'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      rule.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {rule.status}
-                    </span>
-                    {isEditing !== rule.id && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Existing Rules</h2>
+          </div>
+          
+          {approvalRules.length === 0 ? (
+            <div className="p-8 text-center">
+              <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No approval rules configured</h3>
+              <p className="text-gray-600 mb-4">Create your first approval rule to get started</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Create Rule
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {approvalRules.map((rule) => {
+                const user = users.find(u => u.id === rule.userId);
+                return (
+                  <div key={rule.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {user ? user.name : 'Unknown User'}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            rule.isActive 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {rule.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 mb-3">{rule.description}</p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-700">Manager:</span>
+                            <span className="ml-2 text-gray-600">
+                              {rule.managerId ? users.find(u => u.id === rule.managerId)?.name : 'Not assigned'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Approvers:</span>
+                            <span className="ml-2 text-gray-600">
+                              {rule.approvers?.length || 0} assigned
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Sequence:</span>
+                            <span className="ml-2 text-gray-600">
+                              {rule.isSequential ? 'Sequential' : 'Parallel'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Min Approval:</span>
+                            <span className="ml-2 text-gray-600">
+                              {rule.minimumApprovalPercentage}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
                       <button
-                        onClick={() => handleEditRule(rule.id)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Edit Rule"
+                        onClick={() => handleEdit(rule)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        <Edit className="w-4 h-4" />
+                        Edit
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteRule(rule.id)}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete Rule"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Form Modal */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {editingRule ? 'Edit Approval Rule' : 'Create New Approval Rule'}
+                </h2>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* User Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="userId"
+                    value={formData.userId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a user</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {isEditing === rule.id ? (
-                  <div className="space-y-6">
-                    {/* User Selection */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          User
-                        </label>
-                        <input
-                          type="text"
-                          value={rule.user}
-                          onChange={(e) => handleRuleChange(rule.id, 'user', e.target.value)}
-                          placeholder="Enter user name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Manager
-                        </label>
-                        <select
-                          value={rule.manager}
-                          onChange={(e) => handleRuleChange(rule.id, 'manager', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="">Select Manager</option>
-                          <option value="Sarah Wilson">Sarah Wilson</option>
-                          <option value="David Brown">David Brown</option>
-                          <option value="Mike Johnson">Mike Johnson</option>
-                        </select>
-                      </div>
-                    </div>
+                {/* Rule Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Approval rule for miscellaneous expenses"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <textarea
-                        value={rule.description}
-                        onChange={(e) => handleRuleChange(rule.id, 'description', e.target.value)}
-                        placeholder="Describe the approval rule"
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                {/* Manager Assignment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Manager
+                  </label>
+                  <select
+                    name="managerId"
+                    value={formData.managerId}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a manager</option>
+                    {managers.map(manager => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name} ({manager.email})
+                      </option>
+                    ))}
+                  </select>
+                  {selectedUser && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Default manager: {selectedUser.manager || 'Not assigned'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Manager as Approver Checkbox */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isManagerApprover"
+                    name="isManagerApprover"
+                    checked={formData.isManagerApprover}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isManagerApprover" className="ml-2 text-sm text-gray-700">
+                    Is manager an approver?
+                  </label>
+                </div>
+
+                {/* Approvers List */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Approvers
+                  </label>
+                  
+                  {/* Add New Approver */}
+                  <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Approver</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={newApprover.name}
+                        onChange={(e) => setNewApprover(prev => ({ ...prev, name: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={newApprover.email}
+                        onChange={(e) => setNewApprover(prev => ({ ...prev, email: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddApprover}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add
+                      </button>
                     </div>
+                  </div>
 
-                    {/* Manager as Approver */}
-                    <div>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={rule.isManagerApprover}
-                          onChange={(e) => handleRuleChange(rule.id, 'isManagerApprover', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">
-                          Is manager an approver?
-                        </span>
-                      </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        If checked, the approval request will go to the user's manager first.
-                      </p>
-                    </div>
-
-                    {/* Approvers */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-sm font-medium text-gray-700">Approvers</h4>
-                        <button
-                          onClick={() => handleAddApprover(rule.id)}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          + Add Approver
-                        </button>
-                      </div>
-                      <div className="space-y-3">
-                        {rule.approvers.map((approver, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                            <input
-                              type="text"
-                              value={approver.name}
-                              onChange={(e) => handleApproverChange(rule.id, index, 'name', e.target.value)}
-                              placeholder="Approver name"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                  {/* Approvers List */}
+                  {formData.approvers.length > 0 && (
+                    <div className="space-y-2">
+                      {formData.approvers.map((approver) => (
+                        <div key={approver.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <UserCheck className="w-5 h-5 text-gray-400" />
+                            <div>
+                              <p className="font-medium text-gray-900">{approver.name}</p>
+                              <p className="text-sm text-gray-600">{approver.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
                             <label className="flex items-center">
                               <input
                                 type="checkbox"
-                                checked={approver.required}
-                                onChange={(e) => handleApproverChange(rule.id, index, 'required', e.target.checked)}
+                                checked={approver.isRequired}
+                                onChange={() => handleToggleRequired(approver.id)}
                                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                               />
                               <span className="ml-2 text-sm text-gray-700">Required</span>
                             </label>
                             <button
-                              onClick={() => handleRemoveApprover(rule.id, index)}
-                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              type="button"
+                              onClick={() => handleRemoveApprover(approver.id)}
+                              className="text-red-600 hover:text-red-800"
                             >
-                              <X className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                </div>
 
-                    {/* Approvers Sequence */}
-                    <div>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={rule.approversSequence}
-                          onChange={(e) => handleRuleChange(rule.id, 'approversSequence', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">
-                          Approvers Sequence
-                        </span>
-                      </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {rule.approversSequence
-                          ? 'Approval requests are sent sequentially in the order listed.'
-                          : 'Approval requests are sent to all approvers in parallel.'}
-                      </p>
-                    </div>
+                {/* Approvers Sequence Checkbox */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isSequential"
+                    name="isSequential"
+                    checked={formData.isSequential}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isSequential" className="ml-2 text-sm text-gray-700">
+                    Approvers Sequence (Sequential approval)
+                  </label>
+                </div>
 
-                    {/* Minimum Approval Percentage */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Minimum Approval Percentage
-                      </label>
-                      <input
-                        type="number"
-                        value={rule.minApprovalPercentage}
-                        onChange={(e) => handleRuleChange(rule.id, 'minApprovalPercentage', parseInt(e.target.value))}
-                        min="0"
-                        max="100"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
+                {/* Minimum Approval Percentage */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Minimum Approval Percentage
+                  </label>
+                  <input
+                    type="number"
+                    name="minimumApprovalPercentage"
+                    value={formData.minimumApprovalPercentage}
+                    onChange={handleInputChange}
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Percentage of approvers required to approve the expense
+                  </p>
+                </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={() => handleSaveRule(rule.id)}
-                        disabled={isSaving}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Saving...' : 'Save Rule'}
-                      </button>
-                      <button
-                        onClick={() => handleCancelEdit(rule.id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Manager</p>
-                      <p className="text-sm text-gray-900">{rule.manager || 'Not set'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Approvers</p>
-                      <p className="text-sm text-gray-900">{rule.approvers.length} approvers</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Sequence</p>
-                      <p className="text-sm text-gray-900">
-                        {rule.approversSequence ? 'Sequential' : 'Parallel'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Min. Approval</p>
-                      <p className="text-sm text-gray-900">{rule.minApprovalPercentage}%</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                {/* Active Status */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
+                    Active
+                  </label>
+                </div>
 
-        {rules.length === 0 && (
-          <div className="text-center py-12">
-            <Settings className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No approval rules</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by creating your first approval rule.
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={handleAddRule}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add New Rule
-              </button>
+                {/* Form Actions */}
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {editingRule ? 'Update Rule' : 'Create Rule'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

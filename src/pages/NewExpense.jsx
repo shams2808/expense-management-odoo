@@ -3,11 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, Camera, X, Save, Send, DollarSign, Calendar, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { getSupportedCurrencies } from '../utils/currency';
+import { useAuth } from '../contexts/AuthContext';
+import { useExpenses } from '../contexts/ExpensesContext';
 import toast from 'react-hot-toast';
 
 const NewExpense = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { createExpense, submitExpense } = useExpenses();
   const mode = searchParams.get('mode'); // 'upload' or 'manual'
   
   const [formData, setFormData] = useState({
@@ -191,13 +195,22 @@ const NewExpense = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // Create expense with proper data structure
+      const expenseData = {
+        ...formData,
+        employeeId: user.id,
+        employeeName: user.name,
+        employeeEmail: user.email,
+        currency: formData.currency || 'USD',
+        status: 'draft'
+      };
+
+      createExpense(expenseData);
       toast.success('Expense created successfully!');
       navigate('/employee/dashboard');
       
     } catch (error) {
+      console.error('Failed to create expense:', error);
       toast.error('Failed to create expense');
     } finally {
       setIsSubmitting(false);
@@ -213,11 +226,53 @@ const NewExpense = () => {
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create expense as draft
+      const expenseData = {
+        ...formData,
+        employeeId: user.id,
+        employeeName: user.name,
+        employeeEmail: user.email,
+        currency: formData.currency || 'USD',
+        status: 'draft'
+      };
+
+      createExpense(expenseData);
       toast.success('Draft saved successfully!');
       navigate('/employee/dashboard');
     } catch (error) {
+      console.error('Failed to save draft:', error);
       toast.error('Failed to save draft');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!validateForm()) {
+      toast.error('Please fix the errors below');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Create expense and immediately submit for approval
+      const expenseData = {
+        ...formData,
+        employeeId: user.id,
+        employeeName: user.name,
+        employeeEmail: user.email,
+        currency: formData.currency || 'USD',
+        status: 'draft'
+      };
+
+      const expense = createExpense(expenseData);
+      submitExpense(expense.id);
+      toast.success('Expense submitted for approval!');
+      navigate('/employee/dashboard');
+    } catch (error) {
+      console.error('Failed to submit expense:', error);
+      toast.error('Failed to submit expense');
     } finally {
       setIsSubmitting(false);
     }
@@ -471,9 +526,10 @@ const NewExpense = () => {
                 </button>
                 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmitForApproval}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSubmitting ? (
                     <>
@@ -483,7 +539,7 @@ const NewExpense = () => {
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      Submit Expense
+                      Submit for Approval
                     </>
                   )}
                 </button>

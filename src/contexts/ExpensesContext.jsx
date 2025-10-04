@@ -148,7 +148,7 @@ export const ExpensesProvider = ({ children }) => {
   };
 
   // Approval rules management
-  const createApprovalRule = (ruleData) => {
+  const addApprovalRule = (ruleData) => {
     const newRule = {
       id: Date.now(),
       ...ruleData,
@@ -157,6 +157,8 @@ export const ExpensesProvider = ({ children }) => {
     setApprovalRules(prev => [...prev, newRule]);
     return newRule;
   };
+
+  const createApprovalRule = addApprovalRule;
 
   const updateApprovalRule = (ruleId, updates) => {
     setApprovalRules(prev => prev.map(rule => 
@@ -209,6 +211,19 @@ export const ExpensesProvider = ({ children }) => {
     return approvalRules;
   };
 
+  const getApprovalRules = getAllApprovalRules;
+
+  // Get users (mock data for now)
+  const getUsers = () => {
+    return [
+      { id: 1, name: 'John Employee', email: 'john@company.com', role: 'employee', manager: 'Manager User' },
+      { id: 2, name: 'Manager User', email: 'manager@company.com', role: 'manager' },
+      { id: 3, name: 'Admin User', email: 'admin@company.com', role: 'admin' },
+      { id: 4, name: 'Jane Smith', email: 'jane@company.com', role: 'employee', manager: 'Manager User' },
+      { id: 5, name: 'Bob Johnson', email: 'bob@company.com', role: 'manager' }
+    ];
+  };
+
   // Statistics
   const getExpenseStats = () => {
     const totalExpenses = expenses.length;
@@ -251,9 +266,12 @@ export const ExpensesProvider = ({ children }) => {
     rejectExpense,
     
     // Approval rules functions
+    addApprovalRule,
     createApprovalRule,
     updateApprovalRule,
     deleteApprovalRule,
+    getApprovalRules,
+    getUsers,
     
     // Utility functions
     convertExpenseAmount,

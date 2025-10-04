@@ -1,411 +1,394 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Receipt, Plus, Upload, Search, Filter, Eye, Edit, Trash2, DollarSign, Calendar, FileText, Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, Users, CreditCard } from 'lucide-react';
+import { useExpenses } from '../contexts/ExpensesContext';
+import { Upload, Plus, Search, Filter, Eye, Edit, Trash2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
+  const { getExpensesForUser, deleteExpense, submitExpense, convertExpenseAmount, companyCurrency } = useExpenses();
+  const navigate = useNavigate();
+  
   const [expenses, setExpenses] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data for expenses
   useEffect(() => {
-    const mockExpenses = [
-      {
-        id: 1,
-        description: 'Office Supplies',
-        category: 'Supplies',
-        amount: 150.00,
-        currency: 'USD',
-        date: '2024-01-15',
-        status: 'approved',
-        paidBy: 'Company Card',
-        remarks: 'Monthly office supplies order'
-      },
-      {
-        id: 2,
-        description: 'Client Lunch',
-        category: 'Meals',
-        amount: 75.50,
-        currency: 'USD',
-        date: '2024-01-14',
-        status: 'submitted',
-        paidBy: 'Personal Card',
-        remarks: 'Business lunch with potential client'
-      },
-      {
-        id: 3,
-        description: 'Software License',
-        category: 'Software',
-        amount: 500.00,
-        currency: 'USD',
-        date: '2024-01-13',
-        status: 'draft',
-        paidBy: 'Company Card',
-        remarks: 'Annual subscription renewal'
-      },
-      {
-        id: 4,
-        description: 'Travel - Flight',
-        category: 'Travel',
-        amount: 320.00,
-        currency: 'USD',
-        date: '2024-01-12',
-        status: 'approved',
-        paidBy: 'Company Card',
-        remarks: 'Business trip to New York'
-      },
-      {
-        id: 5,
-        description: 'Team Dinner',
-        category: 'Meals',
-        amount: 200.00,
-        currency: 'USD',
-        date: '2024-01-11',
-        status: 'rejected',
-        paidBy: 'Personal Card',
-        remarks: 'Team building dinner'
-      }
-    ];
-    setExpenses(mockExpenses);
+    loadExpenses();
   }, []);
 
-  const handleUploadReceipt = async (file) => {
-    setIsUploading(true);
+  useEffect(() => {
+    filterExpenses();
+  }, [expenses, searchTerm, statusFilter]);
+
+  const loadExpenses = async () => {
     try {
-      // Simulate OCR processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create new expense from receipt
-      const newExpense = {
-        id: Date.now(),
-        description: 'Receipt Upload',
-        category: 'Other',
-        amount: 0.00,
-        currency: 'USD',
-        date: new Date().toISOString().split('T')[0],
-        status: 'draft',
-        paidBy: 'Personal Card',
-        remarks: 'Uploaded from receipt'
-      };
-      
-      setExpenses(prev => [newExpense, ...prev]);
-      toast.success('Receipt processed successfully!');
+      setIsLoading(true);
+      const userExpenses = getExpensesForUser(user.id);
+      setExpenses(userExpenses);
     } catch (error) {
-      toast.error('Failed to process receipt');
+      console.error('Failed to load expenses:', error);
+      toast.error('Failed to load expenses');
     } finally {
-      setIsUploading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmitExpense = (id) => {
-    setExpenses(prev => prev.map(exp => 
-      exp.id === id ? { ...exp, status: 'submitted' } : exp
-    ));
-    toast.success('Expense submitted for approval');
+  const filterExpenses = () => {
+    let filtered = expenses;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(expense =>
+        expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.remarks.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(expense => expense.status === statusFilter);
+    }
+
+    setFilteredExpenses(filtered);
   };
 
-  const handleDeleteExpense = (id) => {
-    setExpenses(prev => prev.filter(exp => exp.id !== id));
-    toast.success('Expense deleted');
-  };
-
-  const handleViewExpense = (id) => {
-    toast.info('View expense details');
-  };
-
-  const handleEditExpense = (id) => {
-    toast.info('Edit expense');
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'draft':
-        return <FileText className="w-4 h-4" />;
-      case 'submitted':
-        return <Clock className="w-4 h-4" />;
-      case 'approved':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
+  const handleDelete = async (expenseId) => {
+    if (window.confirm('Are you sure you want to delete this expense?')) {
+      try {
+        deleteExpense(expenseId);
+        toast.success('Expense deleted successfully');
+        loadExpenses();
+      } catch (error) {
+        console.error('Failed to delete expense:', error);
+        toast.error('Failed to delete expense');
+      }
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'draft':
-        return 'bg-blue-100 text-blue-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const handleSubmit = async (expenseId) => {
+    try {
+      submitExpense(expenseId);
+      toast.success('Expense submitted for approval');
+      loadExpenses();
+    } catch (error) {
+      console.error('Failed to submit expense:', error);
+      toast.error('Failed to submit expense');
     }
   };
 
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = !searchQuery || 
-      expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      expense.category.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || expense.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      draft: { 
+        label: 'To submit', 
+        className: 'bg-gray-100 text-gray-800',
+        icon: Edit
+      },
+      submitted: { 
+        label: 'Waiting approval', 
+        className: 'bg-yellow-100 text-yellow-800',
+        icon: Clock
+      },
+      approved: { 
+        label: 'Approved', 
+        className: 'bg-green-100 text-green-800',
+        icon: CheckCircle
+      },
+      rejected: { 
+        label: 'Rejected', 
+        className: 'bg-red-100 text-red-800',
+        icon: AlertCircle
+      }
+    };
 
-  const stats = {
-    total: expenses.length,
-    draft: expenses.filter(e => e.status === 'draft').length,
-    submitted: expenses.filter(e => e.status === 'submitted').length,
-    approved: expenses.filter(e => e.status === 'approved').length,
-    totalAmount: expenses.reduce((sum, e) => sum + e.amount, 0)
+    const config = statusConfig[status] || statusConfig.draft;
+    const IconComponent = config.icon;
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+        <IconComponent className="w-3 h-3" />
+        {config.label}
+      </span>
+    );
   };
+
+  const getStatusCounts = () => {
+    return {
+      all: expenses.length,
+      draft: expenses.filter(e => e.status === 'draft').length,
+      submitted: expenses.filter(e => e.status === 'submitted').length,
+      approved: expenses.filter(e => e.status === 'approved').length,
+      rejected: expenses.filter(e => e.status === 'rejected').length
+    };
+  };
+
+  const statusCounts = getStatusCounts();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 text-sm">Loading expenses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Expense Management</h1>
-          <p className="mt-2 text-gray-600">Track and manage your business expenses</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Expenses</h1>
+              <p className="text-gray-600 mt-2">Manage and track your expense reports</p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                to="/expense/new?mode=upload"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Upload Receipt
+              </Link>
+              <Link
+                to="/expense/new?mode=manual"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                New Expense
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Receipt className="h-8 w-8 text-blue-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Edit className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Expenses</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+                <p className="text-sm font-medium text-gray-600">Draft</p>
+                <p className="text-2xl font-bold text-gray-900">{statusCounts.draft}</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <FileText className="h-8 w-8 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Draft</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.draft}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Clock className="h-8 w-8 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Pending</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.submitted}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Approved</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.approved}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <DollarSign className="h-8 w-8 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Amount</p>
-                <p className="text-2xl font-semibold text-gray-900">${stats.totalAmount.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <label className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-            <Upload className="w-5 h-5" />
-            {isUploading ? 'Processing...' : 'Upload Receipt'}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files[0] && handleUploadReceipt(e.target.files[0])}
-              className="hidden"
-              disabled={isUploading}
-            />
-          </label>
           
-          <Link
-            to="/expense/new"
-            className="flex items-center justify-center gap-3 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            New Expense
-          </Link>
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-2xl font-bold text-gray-900">{statusCounts.submitted}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Approved</p>
+                <p className="text-2xl font-bold text-gray-900">{statusCounts.approved}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Rejected</p>
+                <p className="text-2xl font-bold text-gray-900">{statusCounts.rejected}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Search and Filter */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search expenses..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              
-              <div className="flex items-center gap-4">
-                <Filter className="w-5 h-5 text-gray-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="draft">To Submit</option>
+                <option value="submitted">Waiting Approval</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
             </div>
           </div>
         </div>
 
         {/* Expenses Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{expense.description}</p>
-                        {expense.remarks && (
-                          <p className="text-sm text-gray-500">{expense.remarks}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                        {expense.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {expense.currency} {expense.amount.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(expense.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(expense.status)}`}>
-                        {getStatusIcon(expense.status)}
-                        {expense.status.charAt(0).toUpperCase() + expense.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewExpense(expense.id)}
-                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="View details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        
-                        {expense.status === 'draft' && (
-                          <>
-                            <button
-                              onClick={() => handleEditExpense(expense.id)}
-                              className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit expense"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleSubmitExpense(expense.id)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              Submit
-                            </button>
-                          </>
-                        )}
-                        
-                        <button
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete expense"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Expense Reports</h2>
+          </div>
+          
+          {filteredExpenses.length === 0 ? (
+            <div className="p-8 text-center">
+              <Edit className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'Create your first expense report to get started'
+                }
+              </p>
+              {!searchTerm && statusFilter === 'all' && (
+                <div className="flex gap-3 justify-center">
+                  <Link
+                    to="/expense/new?mode=upload"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Receipt
+                  </Link>
+                  <Link
+                    to="/expense/new?mode=manual"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    New Expense
+                  </Link>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Paid By
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredExpenses.map((expense) => (
+                    <tr key={expense.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {expense.description}
+                          </div>
+                          {expense.remarks && (
+                            <div className="text-sm text-gray-500">
+                              {expense.remarks}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(expense.expenseDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {expense.category}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {expense.paidBy}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(expense.amount, expense.currency)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(expense.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          {expense.status === 'draft' && (
+                            <>
+                              <Link
+                                to={`/expense/edit/${expense.id}`}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => handleSubmit(expense.id)}
+                                className="text-green-600 hover:text-green-900"
+                                title="Submit for approval"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {expense.status === 'draft' && (
+                            <button
+                              onClick={() => handleDelete(expense.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete expense"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <Link
+                            to={`/expense/view/${expense.id}`}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="View details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
-        {filteredExpenses.length === 0 && (
-          <div className="text-center py-12">
-            <Receipt className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No expenses found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filter criteria.'
-                : 'Get started by creating a new expense.'
-              }
-            </p>
-            {!searchQuery && statusFilter === 'all' && (
-              <div className="mt-6">
-                <Link
-                  to="/expense/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Expense
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
